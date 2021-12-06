@@ -1,13 +1,14 @@
 clear 
 close all
-uno = arduino;
+uno = arduino('/dev/cu.usbmodem1101','Uno','Libraries',);
 dev = device(uno,'I2CAddress','0x68');
-for i= 1:28
+for i= 1:105
     Registers(i) = readRegister(dev, i);
 end
+% writeRegister(dev, 37, 0);in=
 clear dev
 TuneSamples = 500;
-imu = mpu6050(uno, 'SamplesPerRead', TuneSamples);
+imu = mpu9250(uno, 'SamplesPerRead', TuneSamples);
 SensorData = imu.read;
 SensorTable = timetable2table(SensorData);
 SensorTable = removevars(SensorTable,1);
@@ -23,26 +24,26 @@ SensorTable.Properties.VariableNames = {'Accelerometer','Gyroscope'};
 release(imu)
 clear uno imu
 uno = arduino;
-imu = mpu6050(uno, 'SamplesPerRead', 1, 'OutputFormat','matrix');
+imu = mpu9250(uno, 'SamplesPerRead', 1, 'OutputFormat','matrix');
 [~, timeZero] = readAcceleration(imu);
 %% Complementary filter 
 % fuse = complementaryFilter;
 % fuse.AccelerometerGain = 0.5;
 % fuse.HasMagnetometer = false;
 %% 
-Fuse = imufilter;
+Fuse = ahrsfilter;
 %% Manual parameters 
 % Fuse.AccelerometerNoise = 0.07;
 % Fuse.GyroscopeDriftNoise = 0.055;
 % Fuse.GyroscopeNoise = 0.5;
 % Fuse.LinearAccelerationDecayFactor = 0.9;
 %% 
-cfg = tunerconfig('imufilter', 'MaxIterations', 50);
-% cfg.StepForward = 1.1;
-% cfg.ObjectiveLimit = 10;
-GroundTruth = table(repmat(quaternion(1,0,0,0),TuneSamples,1), ...
-    'VariableNames', {'Orientation'});
-tune(Fuse, SensorTable, GroundTruth, cfg);
+% cfg = tunerconfig('imufilter', 'MaxIterations', 50);
+% % cfg.StepForward = 1.1;
+% % cfg.ObjectiveLimit = 10;
+% GroundTruth = table(repmat(quaternion(1,0,0,0),TuneSamples,1), ...
+%     'VariableNames', {'Orientation'});
+% tune(Fuse, SensorTable, GroundTruth, cfg);
 
 viewer = HelperOrientationViewer;
 figure('units','normalized','outerposition',[0 0 1 1])
